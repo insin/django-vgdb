@@ -67,6 +67,7 @@ class Platform(models.Model):
     type         = models.ForeignKey(PlatformType, related_name='platforms')
     manufacturer = models.ForeignKey(Company, related_name='manufactured_platforms')
     image        = models.ImageField(upload_to='platforms', blank=True)
+    description  = models.TextField(blank=True)
 
     class Admin:
         pass
@@ -140,7 +141,7 @@ class Trivia(models.Model):
     An item of trivia about a game.
     """
     game   = models.ForeignKey(Game, related_name='trivia')
-    text   = models.TextField()
+    body   = models.TextField()
     source = models.URLField(blank=True)
 
     class Meta:
