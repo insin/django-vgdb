@@ -17,13 +17,28 @@ from django.db import models
 
 from django.contrib.auth.models import User
 
-__all__ = ['Company', 'PlatformType', 'Platform', 'Genre', 'Series', 'Game',
-    'Screenshot', 'Trivia', 'Region', 'Release', 'Reviewer', 'Review', 'Link',
-    'UserProfile', 'Opinion', 'Story', 'UserReview', 'Article']
+__all__ = ['Region', 'Company', 'PlatformType', 'Platform', 'PlatformRelease',
+    'Genre', 'Series', 'Game', 'GameRelease', 'Screenshot', 'Trivia', 'Link',
+    'Reviewer', 'Review', 'UserProfile', 'Opinion', 'Story', 'UserReview',
+    'Article']
 
 ####################
 # Cold, Hard Facts #
 ####################
+
+class Region(models.Model):
+    """
+    A region or territory in which games are released.
+    """
+    code        = models.CharField(max_length=3, unique=True)
+    name        = models.CharField(max_length=50)
+    description = models.TextField(blank=True)
+
+    class Admin:
+        pass
+
+    def __unicode__(self):
+        return self.name
 
 class Company(models.Model):
     """
@@ -75,6 +90,25 @@ class Platform(models.Model):
     def __unicode__(self):
         return self.name
 
+class PlatformRelease(models.Model):
+    """
+    A release of a platform in a particular region.
+    """
+    platform    = models.ForeignKey(Platform, related_name='releases')
+    name        = models.CharField(max_length=100)
+    region      = models.ForeignKey(Region, related_name='platform_releases')
+    date        = models.DateField()
+    description = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'platform_release'
+
+    class Admin:
+        pass
+
+    def __unicode__(self):
+        return u'%s (%s)' % (self.platform, self.region.code)
+
 class Genre(models.Model):
     """
     A type of game.
@@ -122,6 +156,25 @@ class Game(models.Model):
     def __unicode__(self):
         return self.name
 
+class GameRelease(models.Model):
+    """
+    A release of a game in a particular region on a particular platform.
+    """
+    game        = models.ForeignKey(Game, related_name='releases')
+    name        = models.CharField(max_length=255, blank=True)
+    platform    = models.ForeignKey(Platform, related_name='game_releases')
+    region      = models.ForeignKey(Region, related_name='game_releases')
+    publisher   = models.ForeignKey(Company, null=True, blank=True, related_name='published_releases')
+    date        = models.DateField()
+    cover       = models.ImageField(upload_to='covers', blank=True)
+    description = models.TextField(blank=True)
+
+    class Admin:
+        pass
+
+    def __unicode__(self):
+        return u'%s (%s, %s)' % (self.game, self.region.code, self.platform)
+
 class Screenshot(models.Model):
     """
     A screenshot of a game.
@@ -153,37 +206,20 @@ class Trivia(models.Model):
     def __unicode__(self):
         return u'%s trivia - %s' % (self.game, self.text)
 
-class Region(models.Model):
+class Link(models.Model):
     """
-    A region or territory in which games are released.
+    A link to an external resource related to a game.
     """
-    name        = models.CharField(max_length=50)
+    game        = models.ForeignKey(Game, related_name='links')
+    title       = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    url         = models.URLField()
 
     class Admin:
         pass
 
     def __unicode__(self):
-        return self.name
-
-class Release(models.Model):
-    """
-    A release of a game in a particular region on a particular platform.
-    """
-    game        = models.ForeignKey(Game, related_name='releases')
-    name        = models.CharField(max_length=255, blank=True)
-    platform    = models.ForeignKey(Platform, related_name='releases')
-    region      = models.ForeignKey(Region, related_name='releases')
-    publisher   = models.ForeignKey(Company, null=True, blank=True, related_name='published_releases')
-    date        = models.DateField()
-    cover       = models.ImageField(upload_to='covers', blank=True)
-    description = models.TextField(blank=True)
-
-    class Admin:
-        pass
-
-    def __unicode__(self):
-        return u'%s (%s, %s)' % (self.game, self.region, self.platform)
+        return u'%s link - %s' % (self.game, self.url)
 
 class Reviewer(models.Model):
     """
@@ -219,21 +255,6 @@ class Review(models.Model):
     def __unicode__(self):
         return u'%s review of %s' % (self.reviewer, self.game)
 
-class Link(models.Model):
-    """
-    A link to an external resource related to a game.
-    """
-    game        = models.ForeignKey(Game, related_name='links')
-    title       = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    url         = models.URLField()
-
-    class Admin:
-        pass
-
-    def __unicode__(self):
-        return u'%s link - %s' % (self.game, self.url)
-
 #####################
 # Warm, Soft People #
 #####################
@@ -257,7 +278,7 @@ class Opinion(models.Model):
     """
     user     = models.ForeignKey(User, related_name='opinions')
     game     = models.ForeignKey(Game, related_name='opinions')
-    release  = models.ForeignKey(Release, null=True, blank=True, related_name='opinions')
+    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='opinions')
     pub_date = models.DateTimeField()
     body     = models.TextField()
     source   = models.URLField(blank=True)
@@ -274,7 +295,7 @@ class Story(models.Model):
     """
     user     = models.ForeignKey(User, related_name='stories')
     game     = models.ForeignKey(Game, related_name='stories')
-    release  = models.ForeignKey(Release, null=True, blank=True, related_name='stories')
+    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='stories')
     pub_date = models.DateTimeField()
     title    = models.CharField(max_length=255)
     body     = models.TextField()
@@ -295,7 +316,7 @@ class UserReview(models.Model):
     """
     user     = models.ForeignKey(User, related_name='reviews')
     game     = models.ForeignKey(Game, related_name='user_reviews')
-    release  = models.ForeignKey(Release, null=True, blank=True, related_name='reviews')
+    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='reviews')
     pub_date = models.DateTimeField()
     title    = models.CharField(max_length=255)
     body     = models.TextField()
@@ -317,7 +338,7 @@ class Article(models.Model):
     """
     user     = models.ForeignKey(User, related_name='articles')
     game     = models.ForeignKey(Game, related_name='articles')
-    release  = models.ForeignKey(Release, null=True, blank=True, related_name='articles')
+    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='articles')
     pub_date = models.DateTimeField()
     title    = models.CharField(max_length=255)
     body     = models.TextField()

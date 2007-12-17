@@ -68,6 +68,8 @@ INSTALLED_APPS = (
     'vgdb',
 )
 
+AUTH_PROFILE_MODULE = 'vgdb.UserProfile'
+
 try:
     from vgdb.local_settings import *
 except ImportError:
