@@ -25,6 +25,7 @@ databrowse.site.register(UserProfile)
 databrowse.site.register(UserReview)
 
 urlpatterns = patterns('',
+    (r'^$', 'vgdb.views.index'),
     (r'^admin/', include('django.contrib.admin.urls')),
     (r'^databrowse/(.*)', databrowse.site.root),
 )
