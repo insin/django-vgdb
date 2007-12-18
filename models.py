@@ -16,6 +16,7 @@ Models which capture people's experiences with games.
 from django.db import models
 from django.db.models import signals
 from django.dispatch import dispatcher
+from django.utils.text import truncate_words
 
 from django.contrib.auth.models import User
 
@@ -38,8 +39,12 @@ class Region(models.Model):
     name        = models.CharField(max_length=50)
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ('code',)
+
     class Admin:
-        pass
+        list_display = ('code', 'name',)
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -55,9 +60,10 @@ class Company(models.Model):
 
     class Meta:
         verbose_name_plural = 'companies'
+        ordering = ('name',)
 
     class Admin:
-        pass
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -71,9 +77,11 @@ class PlatformType(models.Model):
 
     class Meta:
         verbose_name = 'platform type'
+        ordering = ('name',)
 
     class Admin:
-        pass
+        list_display = ('name', 'description')
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -88,8 +96,13 @@ class Platform(models.Model):
     image        = models.ImageField(upload_to='platforms', blank=True)
     description  = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ('name',)
+
     class Admin:
-        pass
+        list_display = ('name', 'type', 'manufacturer')
+        list_filter = ('type',)
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -106,9 +119,12 @@ class PlatformRelease(models.Model):
 
     class Meta:
         verbose_name = 'platform release'
+        ordering = ('-date',)
 
     class Admin:
-        pass
+        list_display = ('platform', 'region', 'date')
+        list_filter = ('region',)
+        search_fields = ('description',)
 
     def __unicode__(self):
         return u'%s (%s)' % (self.platform, self.region.code)
@@ -126,7 +142,8 @@ class Genre(models.Model):
     rght = models.PositiveIntegerField(editable=False)
 
     class Admin:
-        pass
+        list_display = ('name', 'parent')
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -148,9 +165,10 @@ class Series(models.Model):
 
     class Meta:
         verbose_name_plural = 'series'
+        ordering = ('name',)
 
     class Admin:
-        pass
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -166,8 +184,12 @@ class Game(models.Model):
     developer   = models.ForeignKey(Company, related_name='developed_games')
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ('name',)
+
     class Admin:
-        pass
+        list_display = ('name', 'series', 'genre', 'publisher', 'developer')
+        search_fields = ('name', 'description')
 
     def __unicode__(self):
         return self.name
@@ -186,7 +208,9 @@ class GameRelease(models.Model):
     description = models.TextField(blank=True)
 
     class Admin:
-        pass
+        list_display = ('game', 'platform', 'region', 'date')
+        list_filter = ('region',)
+        search_fields = ('name', 'description')
 
     def __unicode__(self):
         return u'%s (%s, %s)' % (self.game, self.region.code, self.platform)
@@ -200,7 +224,8 @@ class Screenshot(models.Model):
     description = models.TextField(blank=True)
 
     class Admin:
-        pass
+        list_display = ('game', 'screenshot')
+        search_fields = ('description',)
 
     def __unicode__(self):
         return u'%s screenshot - %s' % (self.game, self.description)
@@ -217,10 +242,10 @@ class Trivia(models.Model):
         verbose_name_plural = 'trivia'
 
     class Admin:
-        pass
+        search_fields = ('body',)
 
     def __unicode__(self):
-        return u'%s trivia - %s' % (self.game, self.text)
+        return u'%s trivia - %s' % (self.game, truncate_words(self.body, 30))
 
 class Link(models.Model):
     """
@@ -232,7 +257,7 @@ class Link(models.Model):
     url         = models.URLField()
 
     class Admin:
-        pass
+        search_fields = ('title', 'description')
 
     def __unicode__(self):
         return u'%s link - %s' % (self.game, self.url)
@@ -246,8 +271,12 @@ class Reviewer(models.Model):
     url         = models.URLField(blank=True)
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ('name',)
+
     class Admin:
-        pass
+        list_display = ('name', 'url')
+        search_fields = ('description',)
 
     def __unicode__(self):
         return self.name
@@ -266,7 +295,8 @@ class Review(models.Model):
     url         = models.URLField(blank=True)
 
     class Admin:
-        pass
+        list_display = ('game', 'reviewer', 'score')
+        search_fields = ('description',)
 
     def __unicode__(self):
         return u'%s review of %s' % (self.reviewer, self.game)
@@ -281,9 +311,10 @@ class UserProfile(models.Model):
 
     class Meta:
         verbose_name_plural = 'user profile'
+        ordering = ('user',)
 
     class Admin:
-        pass
+        list_display = ('user', 'forum_username')
 
     def __unicode__(self):
         return self.forum_username
@@ -299,8 +330,13 @@ class Opinion(models.Model):
     body     = models.TextField()
     source   = models.URLField(blank=True)
 
+    class Meta:
+        ordering = ('-pub_date',)
+
     class Admin:
-        pass
+        list_display = ('user', 'game', 'pub_date')
+        list_filter = ('pub_date',)
+        search_fields = ('body',)
 
     def __unicode__(self):
         return u'Opinion about %s by %s' % (self.game, self.user)
@@ -319,9 +355,12 @@ class Story(models.Model):
 
     class Meta:
         verbose_name_plural = 'stories'
+        ordering = ('-pub_date',)
 
     class Admin:
-        pass
+        list_display = ('user', 'game', 'title', 'pub_date')
+        list_filter = ('pub_date',)
+        search_fields = ('body',)
 
     def __unicode__(self):
         return u'Story about %s by %s' % (self.game, self.user)
@@ -341,9 +380,12 @@ class UserReview(models.Model):
 
     class Meta:
         verbose_name = 'user review'
+        ordering = ('-pub_date',)
 
     class Admin:
-        pass
+        list_display = ('user', 'game', 'title', 'pub_date')
+        list_filter = ('pub_date',)
+        search_fields = ('body',)
 
     def __unicode__(self):
         return u'Review of %s by %s' % (self.game, self.user)
@@ -360,8 +402,13 @@ class Article(models.Model):
     body     = models.TextField()
     source   = models.URLField(blank=True)
 
+    class Meta:
+        ordering = ('-pub_date',)
+
     class Admin:
-        pass
+        list_display = ('user', 'game', 'title', 'pub_date')
+        list_filter = ('pub_date',)
+        search_fields = ('title', 'body',)
 
     def __unicode__(self):
         return u'Article about %s by %s' % (self.game, self.user)
