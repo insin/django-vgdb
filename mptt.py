@@ -1,3 +1,7 @@
+"""
+Utility functions related to implementing Modified Preorder Tree
+Traversal for models.
+"""
 from django.db import connection
 
 __all__ = ['mptt_pre_save', 'mptt_pre_delete']
@@ -5,6 +9,10 @@ __all__ = ['mptt_pre_save', 'mptt_pre_delete']
 qn = connection.ops.quote_name
 
 def mptt_pre_save(parent_attr, left_attr, right_attr):
+    """
+    Creates a pre-save signal receiver for a model which has the given
+    MPTT-related attribute names.
+    """
     def _pre_save_func(instance):
         """
         Sets tree node edge indicators for the given model instance
@@ -40,6 +48,10 @@ def mptt_pre_save(parent_attr, left_attr, right_attr):
     return _pre_save_func
 
 def mptt_pre_delete(left_attr, right_attr):
+    """
+    Creates a pre-delete signal receiver for a model which has the given
+    MPTT-related attribute names.
+    """
     def _pre_delete_func(instance):
         """
         Updates tree node edge indicators which will by affected by the
