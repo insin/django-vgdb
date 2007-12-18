@@ -105,7 +105,7 @@ class PlatformRelease(models.Model):
     description = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = 'platform_release'
+        verbose_name = 'platform release'
 
     class Admin:
         pass
