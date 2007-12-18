@@ -14,8 +14,12 @@ Warm, Soft People
 Models which capture people's experiences with games.
 """
 from django.db import models
+from django.db.models import signals
+from django.dispatch import dispatcher
 
 from django.contrib.auth.models import User
+
+from vgdb.mptt import mptt_pre_delete, mptt_pre_save
 
 __all__ = ['Region', 'Company', 'PlatformType', 'Platform', 'PlatformRelease',
     'Genre', 'Series', 'Game', 'GameRelease', 'Screenshot', 'Trivia', 'Link',
@@ -117,11 +121,23 @@ class Genre(models.Model):
     description = models.TextField(blank=True)
     parent      = models.ForeignKey('self', null=True, blank=True)
 
+    # Tree node edge indicators, for Modified Preorder Tree Traversal
+    lft  = models.PositiveIntegerField(db_index=True, editable=False)
+    rght = models.PositiveIntegerField(editable=False)
+
     class Admin:
         pass
 
     def __unicode__(self):
         return self.name
+
+# Specifying weak=False is required in this case as the dispatcher will
+# be the only place a reference is held to the signal receiving
+# functions we're creating.
+dispatcher.connect(mptt_pre_save('parent', 'lft', 'rght'),
+                   signal=signals.pre_save, sender=Genre, weak=False)
+dispatcher.connect(mptt_pre_delete('lft', 'rght'),
+                   signal=signals.pre_delete, sender=Genre, weak=False)
 
 class Series(models.Model):
     """
