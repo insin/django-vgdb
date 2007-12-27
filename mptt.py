@@ -21,7 +21,7 @@ def _get_next_tree_id(model, tree_id_attr):
     row = cursor.fetchone()
     return row[0] and (row[0] + 1) or 1
 
-def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
+def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr=None):
     """
     Creates a pre-save signal receiver for a model which has the given
     MPTT-related attribute names.
@@ -52,13 +52,15 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
                 setattr(instance, left_attr, target_right + 1)
                 setattr(instance, right_attr, target_right + 2)
                 setattr(instance, tree_id_attr, tree_id)
-                setattr(instance, level_attr, getattr(parent, level_attr) + 1)
+                if level_attr is not None:
+                    setattr(instance, level_attr, getattr(parent, level_attr) + 1)
             else:
                 setattr(instance, left_attr, 1)
                 setattr(instance, right_attr, 2)
                 setattr(instance, tree_id_attr,
                         _get_next_tree_id(instance, tree_id_attr))
-                setattr(instance, level_attr, 0)
+                if level_attr is not None:
+                    setattr(instance, level_attr, 0)
     return _pre_save
 
 def pre_delete(left_attr, right_attr, tree_id_attr):
@@ -121,7 +123,8 @@ def get_descendant_count(left_attr, right_attr):
         return (getattr(instance, right_attr) - getattr(instance, left_attr) - 1) / 2
     return _get_descendant_count
 
-def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
+def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr,
+            level_attr=None):
     """
     Sets the given model class up for Modified Preorder Tree Traversal,
     registering signal receiving functions and adding methods to the
