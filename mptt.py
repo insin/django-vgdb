@@ -4,11 +4,22 @@ Traversal for models.
 """
 from django.db import connection
 
-__all__ = ['mptt_pre_save', 'mptt_pre_delete']
+__all__ = ['pre_save', 'pre_delete']
 
 qn = connection.ops.quote_name
 
-def mptt_pre_save(parent_attr, left_attr, right_attr):
+def _get_next_tree_id(model, tree_id_attr):
+    """
+    Determines the next tree id for the given model or model instance.
+    """
+    cursor = connection.cursor()
+    cursor.execute('SELECT MAX(%s) FROM %s' % (
+        qn(model._meta.get_field(tree_id_attr).column),
+        qn(model._meta.db_table)))
+    row = cursor.fetchone()
+    return row[0] and (row[0] + 1) or 1
+
+def pre_save(parent_attr, left_attr, right_attr, tree_id_attr):
     """
     Creates a pre-save signal receiver for a model which has the given
     MPTT-related attribute names.
@@ -22,32 +33,31 @@ def mptt_pre_save(parent_attr, left_attr, right_attr):
         if not instance.pk:
             cursor = connection.cursor()
             db_table = qn(instance._meta.db_table)
+            parent = getattr(instance, '%s_id' % parent_attr)
             if getattr(instance, '%s_id' % parent_attr):
-                target_right = getattr(getattr(instance, parent_attr), right_attr) - 1
-                update_query = 'UPDATE %s SET %%(col)s = %%(col)s + 2 WHERE %%(col)s > %%%%s' % db_table
+                parent = getattr(instance, parent_attr)
+                target_right = getattr(parent, right_attr) - 1
+                tree_id = getattr(parent, tree_id_attr)
+                update_query = 'UPDATE %s SET %%(col)s = %%(col)s + 2 WHERE %%(col)s > %%%%s AND %s = %%%%s' % (
+                    qn(instance._meta.db_table),
+                    qn(instance._meta.get_field(tree_id_attr).column))
                 cursor.execute(update_query % {
                     'col': qn(instance._meta.get_field(right_attr).column),
-                }, [target_right])
+                }, [target_right, tree_id])
                 cursor.execute(update_query % {
                     'col': qn(instance._meta.get_field(left_attr).column),
-                }, [target_right])
+                }, [target_right, tree_id])
                 setattr(instance, left_attr, target_right + 1)
                 setattr(instance, right_attr, target_right + 2)
+                setattr(instance, tree_id_attr, tree_id)
             else:
-                cursor.execute('SELECT MAX(%s) FROM %s' % (
-                    qn(instance._meta.get_field(right_attr).column),
-                    db_table))
-                row = cursor.fetchone()
-                max_right = row[0]
-                if max_right is None:
-                    setattr(instance, left_attr, 1)
-                    setattr(instance, right_attr, 2)
-                else:
-                    setattr(instance, left_attr, max_right + 1)
-                    setattr(instance, right_attr, max_right + 2)
+                setattr(instance, left_attr, 1)
+                setattr(instance, right_attr, 2)
+                setattr(instance, tree_id_attr,
+                        _get_next_tree_id(instance, tree_id_attr))
     return _pre_save_func
 
-def mptt_pre_delete(left_attr, right_attr):
+def pre_delete(left_attr, right_attr, tree_id_attr):
     """
     Creates a pre-delete signal receiver for a model which has the given
     MPTT-related attribute names.
@@ -60,12 +70,16 @@ def mptt_pre_delete(left_attr, right_attr):
         maintained.
         """
         span = getattr(instance, right_attr) - getattr(instance, left_attr) + 1
-        update_query = 'UPDATE %s SET %%(col)s = %%(col)s - %%%%s WHERE %%(col)s > %%%%s' % qn(instance._meta.db_table)
+        update_query = 'UPDATE %s SET %%(col)s = %%(col)s - %%%%s WHERE %%(col)s > %%%%s AND %s = %%%%s' % (
+            qn(instance._meta.db_table),
+            qn(instance._meta.get_field(tree_id_attr).column))
+        tree_id = getattr(instance, tree_id_attr)
+        right = getattr(instance, right_attr)
         cursor = connection.cursor()
         cursor.execute(update_query % {
             'col': qn(instance._meta.get_field(right_attr).column),
-        }, [span, getattr(instance, right_attr)])
+        }, [span, right, tree_id])
         cursor.execute(update_query % {
             'col': qn(instance._meta.get_field(left_attr).column),
-        }, [span, getattr(instance, right_attr)])
+        }, [span, right, tree_id])
     return _pre_delete_func

@@ -42,6 +42,7 @@ PlatformRelease.objects.create(platform=snes, region=aus,
 # Genres
 platform = Genre.objects.create(name='Platform')
 platform_2d = Genre.objects.create(name='2D Platform', parent=platform)
+platform_3d = Genre.objects.create(name='3D Platform', parent=platform)
 
 # Series
 smb = Series.objects.create(name='Super Mario Bros.')

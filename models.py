@@ -20,7 +20,7 @@ from django.utils.text import truncate_words
 
 from django.contrib.auth.models import User
 
-from vgdb.mptt import mptt_pre_delete, mptt_pre_save
+from vgdb import mptt
 
 __all__ = ['Region', 'Company', 'PlatformType', 'Platform', 'PlatformRelease',
     'Genre', 'Series', 'Game', 'GameRelease', 'Screenshot', 'Trivia', 'Link',
@@ -135,11 +135,15 @@ class Genre(models.Model):
     """
     name        = models.CharField(max_length=50)
     description = models.TextField(blank=True)
-    parent      = models.ForeignKey('self', null=True, blank=True)
+    parent      = models.ForeignKey('self', null=True, blank=True, related_name='children')
 
     # Tree node edge indicators, for Modified Preorder Tree Traversal
-    lft  = models.PositiveIntegerField(db_index=True, editable=False)
-    rght = models.PositiveIntegerField(editable=False)
+    tree_id = models.PositiveIntegerField(db_index=True, editable=False)
+    lft     = models.PositiveIntegerField(db_index=True, editable=False)
+    rght    = models.PositiveIntegerField(db_index=True, editable=False)
+
+    class Meta:
+        ordering = ('tree_id', 'lft', 'name')
 
     class Admin:
         list_display = ('name', 'parent')
@@ -151,9 +155,9 @@ class Genre(models.Model):
 # Specifying weak=False is required in this case as the dispatcher will
 # be the only place a reference is held to the signal receiving
 # functions we're creating.
-dispatcher.connect(mptt_pre_save('parent', 'lft', 'rght'),
+dispatcher.connect(mptt.pre_save('parent', 'lft', 'rght', 'tree_id'),
                    signal=signals.pre_save, sender=Genre, weak=False)
-dispatcher.connect(mptt_pre_delete('lft', 'rght'),
+dispatcher.connect(mptt.pre_delete('lft', 'rght', 'tree_id'),
                    signal=signals.pre_delete, sender=Genre, weak=False)
 
 class Series(models.Model):
