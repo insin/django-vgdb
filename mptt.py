@@ -114,6 +114,29 @@ def get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr):
             }).order_by('%s%s' % ({True: '-', False: ''}[ascending], left_attr))
     return _get_ancestors
 
+def get_descendants(left_attr, right_attr, tree_id_attr):
+    """
+    Creates a function which retrieves the ancestors of a given model
+    instance.
+    """
+    def _get_descendants(instance, include_self=False):
+        """
+        Creates a ``QuerySet`` containing all the descendants of this
+        model instance.
+
+        If ``include_self`` is ``True``, the ``QuerySet`` will also
+        include this model instance.
+        """
+        filters = {tree_id_attr: getattr(instance, tree_id_attr)}
+        if include_self:
+            filters['%s__range' % left_attr] = (getattr(instance, left_attr),
+                                                getattr(instance, right_attr))
+        else:
+            filters['%s__gt' % left_attr] = getattr(instance, left_attr)
+            filters['%s__lt' % left_attr] = getattr(instance, right_attr)
+        return instance._default_manager.filter(**filters).order_by(left_attr)
+    return _get_descendants
+
 def get_descendant_count(left_attr, right_attr):
     """
     Creates a function which determines the number of descendants a
@@ -143,5 +166,7 @@ def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr,
                        signal=signals.pre_delete, sender=model, weak=False)
     setattr(model, 'get_ancestors',
             get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr))
+    setattr(model, 'get_descendants',
+            get_descendants(left_attr, right_attr, tree_id_attr))
     setattr(model, 'get_descendant_count',
             get_descendant_count(left_attr, right_attr))
