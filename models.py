@@ -137,6 +137,7 @@ class Genre(models.Model):
 
     # Modified Preorder Tree Traversal fields
     tree_id = models.PositiveIntegerField(db_index=True, editable=False)
+    level   = models.PositiveIntegerField(editable=False)
     lft     = models.PositiveIntegerField(db_index=True, editable=False)
     rght    = models.PositiveIntegerField(db_index=True, editable=False)
 
@@ -150,7 +151,7 @@ class Genre(models.Model):
     def __unicode__(self):
         return self.name
 
-mptt.treeify(Genre, 'parent', 'lft', 'rght', 'tree_id')
+mptt.treeify(Genre, 'parent', 'lft', 'rght', 'tree_id', 'level')
 
 class Series(models.Model):
     """
