@@ -116,7 +116,7 @@ def get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr):
 
 def get_descendants(left_attr, right_attr, tree_id_attr):
     """
-    Creates a function which retrieves the ancestors of a given model
+    Creates a function which retrieves the descendants of a given model
     instance.
     """
     def _get_descendants(instance, include_self=False):
