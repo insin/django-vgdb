@@ -35,9 +35,8 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr=None):
         if not instance.pk:
             cursor = connection.cursor()
             db_table = qn(instance._meta.db_table)
-            parent = getattr(instance, '%s_id' % parent_attr)
-            if getattr(instance, '%s_id' % parent_attr) is None:
-                parent = getattr(instance, parent_attr)
+            parent = getattr(instance, parent_attr)
+            if parent:
                 target_right = getattr(parent, right_attr) - 1
                 tree_id = getattr(parent, tree_id_attr)
                 update_query = 'UPDATE %s SET %%(col)s = %%(col)s + 2 WHERE %%(col)s > %%%%s AND %s = %%%%s' % (
