@@ -3,8 +3,10 @@ Utility functions related to implementing Modified Preorder Tree
 Traversal for models.
 """
 from django.db import connection
+from django.db.models import signals
+from django.dispatch import dispatcher
 
-__all__ = ['pre_save', 'pre_delete, get_parents']
+__all__ = ['pre_save', 'pre_delete', 'get_parents', 'treeify']
 
 qn = connection.ops.quote_name
 
@@ -104,3 +106,18 @@ def get_parents(parent_attr, left_attr, right_attr, tree_id_attr):
                 tree_id_attr: getattr(instance, tree_id_attr),
             }).order_by('%s%s' % ({True: '-', False: ''}[ascending], left_attr))
     return _get_parents
+
+def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr):
+    """
+    Sets the given model class up for Modified Preorder Tree Traversal.
+    """
+    # Specifying weak=False is required in this case as the dispatcher
+    # will be the only place a reference is held to the signal receiving
+    # functions we're creating.
+    dispatcher.connect(
+        pre_save(parent_attr, left_attr, right_attr, tree_id_attr),
+        signal=signals.pre_save, sender=model, weak=False)
+    dispatcher.connect(pre_delete(left_attr, right_attr, tree_id_attr),
+                       signal=signals.pre_delete, sender=model, weak=False)
+    setattr(model, 'get_parents',
+            get_parents(parent_attr, left_attr, right_attr, tree_id_attr))
