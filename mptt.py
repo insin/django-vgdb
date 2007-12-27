@@ -4,7 +4,7 @@ Traversal for models.
 """
 from django.db import connection
 
-__all__ = ['pre_save', 'pre_delete']
+__all__ = ['pre_save', 'pre_delete, get_parents']
 
 qn = connection.ops.quote_name
 
@@ -24,7 +24,7 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr):
     Creates a pre-save signal receiver for a model which has the given
     MPTT-related attribute names.
     """
-    def _pre_save_func(instance):
+    def _pre_save(instance):
         """
         Sets tree node edge indicators for the given model instance
         before it is added to the database, updating other nodes' edge
@@ -55,14 +55,14 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr):
                 setattr(instance, right_attr, 2)
                 setattr(instance, tree_id_attr,
                         _get_next_tree_id(instance, tree_id_attr))
-    return _pre_save_func
+    return _pre_save
 
 def pre_delete(left_attr, right_attr, tree_id_attr):
     """
     Creates a pre-delete signal receiver for a model which has the given
     MPTT-related attribute names.
     """
-    def _pre_delete_func(instance):
+    def _pre_delete(instance):
         """
         Updates tree node edge indicators which will by affected by the
         deletion of the given model instance and any childrem it may
@@ -82,4 +82,25 @@ def pre_delete(left_attr, right_attr, tree_id_attr):
         cursor.execute(update_query % {
             'col': qn(instance._meta.get_field(left_attr).column),
         }, [span, right, tree_id])
-    return _pre_delete_func
+    return _pre_delete
+
+def get_parents(parent_attr, left_attr, right_attr, tree_id_attr):
+    """
+    Creates a function which retrieves the parents of a given model
+    instance.
+    """
+    def _get_parents(instance, ascending=False):
+        """
+        Creates a ``QuerySet`` containing all the parents of this model
+        instance. This defaults to being in descending order (i.e. root
+        parent first).
+        """
+        if getattr(instance, parent_attr) is None:
+            return instance._default_manager.none()
+        else:
+            return instance._default_manager.filter(**{
+                '%s__lt' % left_attr: getattr(instance, left_attr),
+                '%s__gt' % right_attr: getattr(instance, right_attr),
+                tree_id_attr: getattr(instance, tree_id_attr),
+            }).order_by('%s%s' % ({True: '-', False: ''}[ascending], left_attr))
+    return _get_parents

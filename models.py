@@ -159,6 +159,8 @@ dispatcher.connect(mptt.pre_save('parent', 'lft', 'rght', 'tree_id'),
                    signal=signals.pre_save, sender=Genre, weak=False)
 dispatcher.connect(mptt.pre_delete('lft', 'rght', 'tree_id'),
                    signal=signals.pre_delete, sender=Genre, weak=False)
+setattr(Genre, 'get_parents',
+        mptt.get_parents('parent', 'lft', 'rght', 'tree_id'))
 
 class Series(models.Model):
     """
