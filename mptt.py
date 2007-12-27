@@ -2,7 +2,7 @@
 Utility functions related to implementing Modified Preorder Tree
 Traversal for models.
 """
-from django.db import connection
+from django.db import connection, models
 from django.db.models import signals
 from django.dispatch import dispatcher
 
@@ -149,12 +149,30 @@ def get_descendant_count(left_attr, right_attr):
         return (getattr(instance, right_attr) - getattr(instance, left_attr) - 1) / 2
     return _get_descendant_count
 
+class TreeManager(models.Manager):
+    def __init__(self, parent_attr, left_attr, right_attr, tree_id_attr,
+                 level_attr=None):
+        super(TreeManager, self).__init__()
+        self.parent_attr = parent_attr
+        self.left_attr = left_attr
+        self.right_attr = right_attr
+        self.tree_id_attr = tree_id_attr
+        self.level_attr = level_attr
+
+    def get_complete_tree(self):
+        """
+        Returns a ``QuerySet`` which contains all tree items, ordered in
+        such a way that that items appear in depth-first order.
+        """
+        return super(TreeManager, self).get_query_set().order_by(
+            self.tree_id_attr, self.left_attr)
+
 def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr,
-            level_attr=None):
+            level_attr=None, tree_manager_attr='tree'):
     """
     Sets the given model class up for Modified Preorder Tree Traversal,
-    registering signal receiving functions and adding methods to the
-    class.
+    registering signal receiving functions and adding methods and a
+    custom ``Manager`` to the class.
     """
     # Specifying weak=False is required in this case as the dispatcher
     # will be the only place a reference is held to the signal receiving
@@ -170,3 +188,5 @@ def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr,
             get_descendants(left_attr, right_attr, tree_id_attr))
     setattr(model, 'get_descendant_count',
             get_descendant_count(left_attr, right_attr))
+    TreeManager(parent_attr, left_attr, right_attr, tree_id_attr,
+                level_attr).contribute_to_class(model, tree_manager_attr)
