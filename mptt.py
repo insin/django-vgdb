@@ -97,9 +97,13 @@ def get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr):
     """
     def _get_ancestors(instance, ascending=False):
         """
-        Creates a ``QuerySet`` containing all the get_ancestors of this
-        model instance. This defaults to being in descending order (i.e.
-        root get_ancestors first).
+        Creates a ``QuerySet`` containing all the ancestors of this
+        model instance.
+
+        This defaults to being in descending order (root ancestor first,
+        immediate parent last); passing ``True`` for the ``ascending``
+        argument for will reverse the ordering (immediate parent first,
+        root ancestor last).
         """
         if getattr(instance, parent_attr) is None:
             return instance._default_manager.none()
