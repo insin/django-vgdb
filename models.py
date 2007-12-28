@@ -18,7 +18,7 @@ from django.utils.text import truncate_words
 
 from django.contrib.auth.models import User
 
-from vgdb import mptt
+from mptt.models import treeify
 
 __all__ = ['Region', 'Company', 'PlatformType', 'Platform', 'PlatformRelease',
     'Genre', 'Series', 'Game', 'GameRelease', 'Screenshot', 'Trivia', 'Link',
@@ -145,7 +145,7 @@ class Genre(models.Model):
     def __unicode__(self):
         return self.name
 
-mptt.treeify(Genre, 'parent', 'lft', 'rght', 'tree_id', 'level')
+treeify(Genre, 'parent', 'lft', 'rght', 'tree_id', 'level')
 
 class Series(models.Model):
     """
