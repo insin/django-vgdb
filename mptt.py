@@ -1,6 +1,6 @@
 """
-Utility functions related to implementing Modified Preorder Tree
-Traversal for models.
+Reusable functions related to implementing Modified Preorder Tree
+Traversal for Django models.
 """
 from django.db import connection, models
 from django.db.models import signals
@@ -24,7 +24,7 @@ def _get_next_tree_id(model, tree_id_attr):
 def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
     """
     Creates a pre-save signal receiver for a model which has the given
-    MPTT-related attribute names.
+    tree related attributes.
     """
     def _pre_save(instance):
         """
@@ -63,7 +63,7 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
 def pre_delete(left_attr, right_attr, tree_id_attr):
     """
     Creates a pre-delete signal receiver for a model which has the given
-    MPTT-related attribute names.
+    tree related attributes.
     """
     def _pre_delete(instance):
         """
@@ -89,8 +89,8 @@ def pre_delete(left_attr, right_attr, tree_id_attr):
 
 def get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr):
     """
-    Creates a function which retrieves the ancestors of a given model
-    instance.
+    Creates a function which retrieves the ancestors of a model instance
+    which has the given tree related attributes.
     """
     def _get_ancestors(instance, ascending=False):
         """
@@ -114,8 +114,8 @@ def get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr):
 
 def get_descendants(left_attr, right_attr, tree_id_attr):
     """
-    Creates a function which retrieves the descendants of a given model
-    instance.
+    Creates a function which retrieves the descendants of a model
+    instance which has the given tree related attributes.
     """
     def _get_descendants(instance, include_self=False):
         """
@@ -137,8 +137,8 @@ def get_descendants(left_attr, right_attr, tree_id_attr):
 
 def get_descendant_count(left_attr, right_attr):
     """
-    Creates a function which determines the number of descendants a
-    given model instance has.
+    Creates a function which determines the number of descendants of a
+    model instance which has the given tree related attributes.
     """
     def _get_descendant_count(instance):
         """
@@ -148,8 +148,15 @@ def get_descendant_count(left_attr, right_attr):
     return _get_descendant_count
 
 class TreeManager(models.Manager):
+    """
+    A manager for working with trees of objects.
+    """
     def __init__(self, parent_attr, left_attr, right_attr, tree_id_attr,
                  level_attr):
+        """
+        Tree related attributes for the model being managed are held as
+        attributes of this manager for later use.
+        """
         super(TreeManager, self).__init__()
         self.parent_attr = parent_attr
         self.left_attr = left_attr
