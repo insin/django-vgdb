@@ -89,6 +89,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.admin',
     'django.contrib.databrowse',
+    'mptt', # http://code.google.com/p/django-mptt/
     'vgdb',
 )
 

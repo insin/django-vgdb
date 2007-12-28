@@ -145,7 +145,7 @@ class Genre(models.Model):
     def __unicode__(self):
         return self.name
 
-treeify(Genre, 'parent', 'lft', 'rght', 'tree_id', 'level')
+treeify(Genre)
 
 class Series(models.Model):
     """
