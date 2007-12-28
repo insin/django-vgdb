@@ -21,7 +21,7 @@ def _get_next_tree_id(model, tree_id_attr):
     row = cursor.fetchone()
     return row[0] and (row[0] + 1) or 1
 
-def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr=None):
+def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr):
     """
     Creates a pre-save signal receiver for a model which has the given
     MPTT-related attribute names.
@@ -51,15 +51,13 @@ def pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr=None):
                 setattr(instance, left_attr, target_right + 1)
                 setattr(instance, right_attr, target_right + 2)
                 setattr(instance, tree_id_attr, tree_id)
-                if level_attr is not None:
-                    setattr(instance, level_attr, getattr(parent, level_attr) + 1)
+                setattr(instance, level_attr, getattr(parent, level_attr) + 1)
             else:
                 setattr(instance, left_attr, 1)
                 setattr(instance, right_attr, 2)
                 setattr(instance, tree_id_attr,
                         _get_next_tree_id(instance, tree_id_attr))
-                if level_attr is not None:
-                    setattr(instance, level_attr, 0)
+                setattr(instance, level_attr, 0)
     return _pre_save
 
 def pre_delete(left_attr, right_attr, tree_id_attr):
@@ -151,7 +149,7 @@ def get_descendant_count(left_attr, right_attr):
 
 class TreeManager(models.Manager):
     def __init__(self, parent_attr, left_attr, right_attr, tree_id_attr,
-                 level_attr=None):
+                 level_attr):
         super(TreeManager, self).__init__()
         self.parent_attr = parent_attr
         self.left_attr = left_attr
@@ -159,7 +157,7 @@ class TreeManager(models.Manager):
         self.tree_id_attr = tree_id_attr
         self.level_attr = level_attr
 
-    def get_complete_tree(self):
+    def get_query_set(self):
         """
         Returns a ``QuerySet`` which contains all tree items, ordered in
         such a way that that items appear in depth-first order.
@@ -167,26 +165,40 @@ class TreeManager(models.Manager):
         return super(TreeManager, self).get_query_set().order_by(
             self.tree_id_attr, self.left_attr)
 
-def treeify(model, parent_attr, left_attr, right_attr, tree_id_attr,
-            level_attr=None, tree_manager_attr='tree'):
+def treeify(cls, parent_attr, left_attr, right_attr, tree_id_attr, level_attr,
+            tree_manager_attr='tree'):
     """
     Sets the given model class up for Modified Preorder Tree Traversal,
-    registering signal receiving functions and adding methods and a
-    custom ``Manager`` to the class.
+    which involves:
+
+    1. If any of the specified tree fields -- ``left_attr``,
+       ``right_attr``, ``tree_id_attr`` and ``level_attr`` -- do not
+       exist, adding them to the model class dynamically.
+    2. Creating pre-save and pre-delete signal receiving functions to
+       manage tree field contents.
+    3. Adding tree related methods to the model class.
+    4. Adding a custom tree ``Manager`` to the model class.
     """
+    # Add tree fields if they do not exist
+    for attr in [left_attr, right_attr, tree_id_attr, level_attr]:
+        try:
+            cls._meta.get_field(attr)
+        except models.FieldDoesNotExist:
+            models.PositiveIntegerField(
+                db_index=True, editable=False).contribute_to_class(cls, attr)
     # Specifying weak=False is required in this case as the dispatcher
     # will be the only place a reference is held to the signal receiving
     # functions we're creating.
     dispatcher.connect(
         pre_save(parent_attr, left_attr, right_attr, tree_id_attr, level_attr),
-        signal=signals.pre_save, sender=model, weak=False)
+        signal=signals.pre_save, sender=cls, weak=False)
     dispatcher.connect(pre_delete(left_attr, right_attr, tree_id_attr),
-                       signal=signals.pre_delete, sender=model, weak=False)
-    setattr(model, 'get_ancestors',
+                       signal=signals.pre_delete, sender=cls, weak=False)
+    setattr(cls, 'get_ancestors',
             get_ancestors(parent_attr, left_attr, right_attr, tree_id_attr))
-    setattr(model, 'get_descendants',
+    setattr(cls, 'get_descendants',
             get_descendants(left_attr, right_attr, tree_id_attr))
-    setattr(model, 'get_descendant_count',
+    setattr(cls, 'get_descendant_count',
             get_descendant_count(left_attr, right_attr))
     TreeManager(parent_attr, left_attr, right_attr, tree_id_attr,
-                level_attr).contribute_to_class(model, tree_manager_attr)
+                level_attr).contribute_to_class(cls, tree_manager_attr)

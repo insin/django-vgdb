@@ -135,14 +135,8 @@ class Genre(models.Model):
     description = models.TextField(blank=True)
     parent      = models.ForeignKey('self', null=True, blank=True, related_name='children')
 
-    # Modified Preorder Tree Traversal fields
-    tree_id = models.PositiveIntegerField(db_index=True, editable=False)
-    level   = models.PositiveIntegerField(editable=False)
-    lft     = models.PositiveIntegerField(db_index=True, editable=False)
-    rght    = models.PositiveIntegerField(db_index=True, editable=False)
-
     class Meta:
-        ordering = ('tree_id', 'lft', 'name')
+        ordering = ('name',)
 
     class Admin:
         list_display = ('name', 'parent')
