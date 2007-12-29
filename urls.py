@@ -19,9 +19,10 @@ databrowse.site.register(Reviewer)
 databrowse.site.register(Review)
 databrowse.site.register(Screenshot)
 databrowse.site.register(Series)
+databrowse.site.register(Site)
+databrowse.site.register(SiteUser)
 databrowse.site.register(Story)
 databrowse.site.register(Trivia)
-databrowse.site.register(UserProfile)
 databrowse.site.register(UserReview)
 
 urlpatterns = patterns('',

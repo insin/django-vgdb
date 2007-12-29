@@ -22,8 +22,8 @@ from mptt.models import treeify
 
 __all__ = ['Region', 'Company', 'PlatformType', 'Platform', 'PlatformRelease',
     'Genre', 'Series', 'Game', 'GameRelease', 'Screenshot', 'Trivia', 'Link',
-    'Reviewer', 'Review', 'UserProfile', 'Opinion', 'Story', 'UserReview',
-    'Article']
+    'Reviewer', 'Review', 'Site', 'SiteUser', 'Opinion', 'Story',
+    'UserReview', 'Article']
 
 ####################
 # Cold, Hard Facts #
@@ -280,6 +280,7 @@ class Review(models.Model):
     decimal place where necessary.
     """
     game        = models.ForeignKey(Game, related_name='reviews')
+    release     = models.ForeignKey(GameRelease, related_name='reviews')
     reviewer    = models.ForeignKey(Reviewer, related_name='reviews')
     score       = models.DecimalField(max_digits=3, decimal_places=1)
     description = models.TextField(blank=True)
@@ -296,25 +297,48 @@ class Review(models.Model):
 # Warm, Soft People #
 #####################
 
-class UserProfile(models.Model):
-    user           = models.ForeignKey(User, unique=True, related_name='profile')
-    forum_username = models.CharField(max_length=100)
+class Site(models.Model):
+    """
+    A site from which people's experiences are harvested.
+    """
+    name        = models.CharField(max_length=100)
+    url         = models.URLField(unique=True)
+    description = models.TextField(blank=True)
 
     class Meta:
-        verbose_name_plural = 'user profile'
-        ordering = ('user',)
+        ordering = ('name',)
 
     class Admin:
-        list_display = ('user', 'forum_username')
+        list_display = ('name', 'url')
 
     def __unicode__(self):
-        return self.forum_username
+        return self.name
+
+class SiteUser(models.Model):
+    """
+    A person's user details on a given site.
+
+    Registered users can claim site profiles to tie together their
+    experiences sourced from multiple sites.
+    """
+    site     = models.ForeignKey(Site, related_name='users')
+    username = models.CharField(max_length=100)
+    user     = models.ForeignKey(User, null=True, blank=True, related_name='site_users')
+
+    class Meta:
+        verbose_name_plural = 'site user'
+
+    class Admin:
+        list_display = ('site', 'username', 'user')
+
+    def __unicode__(self):
+        return '%s on %s' % (self.username, self.site)
 
 class Opinion(models.Model):
     """
     Someone's opinion about a game.
     """
-    user     = models.ForeignKey(User, related_name='opinions')
+    user     = models.ForeignKey(SiteUser, related_name='opinions')
     game     = models.ForeignKey(Game, related_name='opinions')
     release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='opinions')
     pub_date = models.DateTimeField()
@@ -336,7 +360,7 @@ class Story(models.Model):
     """
     A story about an experience someone had playing a game.
     """
-    user     = models.ForeignKey(User, related_name='stories')
+    user     = models.ForeignKey(SiteUser, related_name='stories')
     game     = models.ForeignKey(Game, related_name='stories')
     release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='stories')
     pub_date = models.DateTimeField()
@@ -360,9 +384,9 @@ class UserReview(models.Model):
     """
     A user's review of a game.
     """
-    user     = models.ForeignKey(User, related_name='reviews')
+    user     = models.ForeignKey(SiteUser, related_name='reviews')
     game     = models.ForeignKey(Game, related_name='user_reviews')
-    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='reviews')
+    release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='user_reviews')
     pub_date = models.DateTimeField()
     title    = models.CharField(max_length=255)
     body     = models.TextField()
@@ -385,7 +409,7 @@ class Article(models.Model):
     """
     An article about a game.
     """
-    user     = models.ForeignKey(User, related_name='articles')
+    user     = models.ForeignKey(SiteUser, related_name='articles')
     game     = models.ForeignKey(Game, related_name='articles')
     release  = models.ForeignKey(GameRelease, null=True, blank=True, related_name='articles')
     pub_date = models.DateTimeField()
